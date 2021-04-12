@@ -1,12 +1,70 @@
-from graph_tool.all import *
 from collections import defaultdict
+from networkx.generators.random_graphs import erdos_renyi_graph
+import networkx as nx
+import matplotlib.pyplot as plt
+import queue
+
+class Graph:
+    adj = defaultdict(lambda:[])
+    w = defaultdict(lambda: float('inf'))
+    def __init__(self, n = 0):
+        self.n = n
+
+    def add_edge(self, u,v):
+        self.adj[u].append(v)
+        self.adj[v].append(u)
+
+    def set_weight(self, u, v, wt):
+        self.w[frozenset({u,v})] = wt
+
+    def weight(self, u, v):
+        return self.w[frozenset({u,v})]
+
+    def construct(self, E):
+        for e in E:
+            self.adj[e[0]].append(e[1])
+            self.adj[e[1]].append(e[0])
+    
+    def BFS(self, s):
+        visited = defaultdict(lambda: False)
+        prev = defaultdict(lambda: None)
+        visited[s] = True
+        q = queue.Queue()
+        q.put(s)
+        while not q.empty():
+            u = q.get()
+            for v in self.adj[u]:
+                if not visited[v]:
+                    visited[v] = True
+                    q.put(v)
+                    prev[v] = u
+        return prev
+
+    def dijkstra(self, s):
+        dist = defaultdict(lambda: float('inf'))
+        prev = defaultdict(lambda: None)
+        dist[s] = 0
+        H = queue.PriorityQueue()
+        H.put((0,s))
+        while not H.empty():
+            d,u = H.get()
+            if d > dist[u]:
+                continue
+            for u in range(self.n):
+                for v in self.adj[u]:
+                    if dist[v] > dist[u] + self.weight(u,v):
+                        dist[v] = dist[u] + self.weight(u,v)
+                        prev[v] = u
+                        H.put((dist[v],v))
+        return prev
 
 
+
+
+    
+    
 def readGraph(input_file):
-    g = Graph(directed = False)
-    v_prop = g.new_vertex_property('int')
-    vertices = defaultdict(lambda: False)
-    our_index = defaultdict(lambda: False)
+    g = Graph()
     file = open(input_file, 'r')
     lines = file.readlines()
     next = 0
@@ -16,123 +74,70 @@ def readGraph(input_file):
             break
         l = lines[i].split(':')
         u = int(l[0])
-        if not vertices[u]:
-            x = g.add_vertex()
-            v_prop[x] = u
-            vertices[u] = x
-            our_index[g.vertex_index[x]] = u
         v = map(int,l[1][1:].split())
         for y in v:
-            if not vertices[y]:
-                z = g.add_vertex()
-                v_prop[z] = y
-                vertices[y] = z
-                our_index[g.vertex_index[z]] = y
-            g.add_edge(vertices[u],vertices[y])
+            g.add_edge(u,y)
     pairs = []
     for i in range(next,len(lines)):
         p = tuple(map(int,lines[i].split()))
         pairs.append(p)
-    return g,vertices,v_prop,pairs, our_index
-
-class Visitor(BFSVisitor):
-
-    def __init__(self, name, pred, dist):
-        self.name = name
-        self.pred = pred
-        self.dist = dist
-
-    def discover_vertex(self, u):
-        pass
-        # print("-->", self.name[u], "has been discovered!")
-
-    def examine_vertex(self, u):
-        pass
-        # print(self.name[u], "has been examined...")
-
-    def tree_edge(self, e):
-        self.pred[e.target()] = int(e.source())
-        self.dist[e.target()] = self.dist[e.source()] + 1
-
-def shortest_path(source, target, g):
-    dist = g.new_vertex_property("int")
-    pred = g.new_vertex_property("int64_t")
-    bfs_search(g, source , Visitor(v_prop, pred, dist))
-    path = []
-    path.append(target)
-    curr = pred[target]
-    while g.vertex(curr) != source:
-        path.append(curr)
-        curr = pred[g.vertex(curr)]
-    path.append(source)
-    path.reverse()
-    return path
-
-def vertex_disjoint(p1,p2):
-    ans = False
-    s1,s2,t1,t2 = p1[0],p2[0],p1[-1],p2[-1]
-    set1 = set(p1)
-    set2 = set(p2)
-    common = set1.intersection(set2)
-    if s1 == s2 and t1 == t2:
-        if common == set(s1,t1):
-            ans = True
-    else:
-        if len(common) == 0:
-            ans = True
-    return ans
-
-def nextPath(g, s, d, paths, vertices, our_index, w):
-    for p in paths:
-        n = len(p)
-        for i in range(n-1):
-            u,v = g.vertex_index[vertices[p[i]]],g.vertex_index[vertices[p[i+1]]]
-            e = g.edge(u,v)
-            w[e] += 10
-    dist, prev =  dijkstra_search(g, w, vertices[s])
-    # print(our_index[prev[vertices[d]]])
-    curr = d
-    new_path = [d]
-    while curr != s:
-        curr = our_index[prev[vertices[curr]]]
-        new_path.append(curr)
-    new_path.reverse()
-    return new_path
-    
+    return g,pairs
 
 
-
-
+# def getAllPathsUtil(g, u, d, visited, path, paths):
+  
+#         # Mark the current node as visited and store in path
+#         visited[u]= True
+#         path.append(u)
+  
+#         # If current vertex is same as destination, then print
+#         # current path[]
+#         if u == d:
+#             # print(path)
+#             paths.append(list(path))
+#         else:
+#             # If current vertex is not destination
+#             # Recur for all the vertices adjacent to this vertex
+#             for i in g.adj[u]:
+#                 if visited[i]== False:
+#                     getAllPathsUtil(g, i, d, visited, path, paths)
+                      
+#         # Remove current vertex from path[] and mark it as unvisited
+#         path.pop()
+#         visited[u]= False
    
+   
+#     # Prints all paths from 's' to 'd'
+# def getAllPaths(g, s, d):
+  
+#     # Mark all the vertices as not visited
+#     visited =[False]*(g.n)
+  
+#     # Create an array to store paths
+#     path = []
+#     paths = []
+#     # Call the recursive helper function to print all paths
+#     getAllPathsUtil(g, s, d, visited, path, paths)
+#     return paths
 
-
-g,vertices,v_prop,pairs, our_index = readGraph('test.txt')
-graph_draw(g, vertex_text=v_prop, output="test.png")
-        
-dist = g.new_vertex_property("int")
-pred = g.new_vertex_property("int64_t")
-w = g.new_edge_property("int")
-w.set_value(1)
-for e in g.edges():
-    print(w[e])
-bfs_search(g, vertices[89], Visitor(v_prop, pred, dist))
-paths = []
-for pair in pairs:
-    start,end = pair[0],pair[1]
-    p = shortest_path(vertices[start],vertices[end],g)
-    path = [v_prop[v] for v in p]
-    paths.append(path)
-n = len(paths)
-for i in range(0,n-1):
-    for j in range(i+1,n):
-        if vertex_disjoint(paths[i],paths[j]):
-            print('{} and {} are vertex disjoint'.format(paths[i],paths[j]))
-        else:
-            print('{} and {} are not vertex disjoint'.format(paths[i],paths[j]))
-        
-new_path = nextPath(g, 1, 4, [[1,4]], vertices, our_index, w)
-print(new_path)
-for e in g.edges():
-    print(w[e])
-
-# nextPath(g, 1, 4, [[1,4]], vertices, our_index, w)
+# n = 10
+# p = 0.5
+# R = erdos_renyi_graph(n, p)
+E = [(0,1),(0,4),(0,3),(1,2),(4,2),(3,2)]
+g = Graph(5)
+g.construct(E)
+g.set_weight(0,1,2)
+g.set_weight(0,3,2)
+g.set_weight(0,4,1)
+g.set_weight(1,2,2)
+g.set_weight(3,2,2)
+g.set_weight(4,2,1)
+# paths = getAllPaths(g, 0, 1)
+# print(paths)
+# pos = nx.spring_layout(R)
+# nx.draw(R, pos, with_labels = True)
+# plt.savefig("Graph.png", format="PNG")
+prev = g.BFS(0)
+print(prev)
+prev = g.dijkstra(0)
+print(prev)
