@@ -6,6 +6,7 @@ def readGraph(input_file):
     g = Graph(directed = False)
     v_prop = g.new_vertex_property('int')
     vertices = defaultdict(lambda: False)
+    our_index = defaultdict(lambda: False)
     file = open(input_file, 'r')
     lines = file.readlines()
     next = 0
@@ -19,18 +20,20 @@ def readGraph(input_file):
             x = g.add_vertex()
             v_prop[x] = u
             vertices[u] = x
+            our_index[g.vertex_index[x]] = u
         v = map(int,l[1][1:].split())
         for y in v:
             if not vertices[y]:
                 z = g.add_vertex()
                 v_prop[z] = y
                 vertices[y] = z
+                our_index[g.vertex_index[z]] = y
             g.add_edge(vertices[u],vertices[y])
     pairs = []
     for i in range(next,len(lines)):
         p = tuple(map(int,lines[i].split()))
         pairs.append(p)
-    return g,vertices,v_prop,pairs
+    return g,vertices,v_prop,pairs, our_index
 
 class Visitor(BFSVisitor):
 
@@ -79,13 +82,40 @@ def vertex_disjoint(p1,p2):
             ans = True
     return ans
 
+def nextPath(g, s, d, paths, vertices, our_index, w):
+    for p in paths:
+        n = len(p)
+        for i in range(n-1):
+            u,v = g.vertex_index[vertices[p[i]]],g.vertex_index[vertices[p[i+1]]]
+            e = g.edge(u,v)
+            w[e] += 10
+    dist, prev =  dijkstra_search(g, w, vertices[s])
+    # print(our_index[prev[vertices[d]]])
+    curr = d
+    new_path = [d]
+    while curr != s:
+        curr = our_index[prev[vertices[curr]]]
+        new_path.append(curr)
+    new_path.reverse()
+    return new_path
+    
 
-g,vertices,v_prop,pairs = readGraph('input.txt')
-# graph_draw(g, vertex_text=v_prop, output="output.png")
+
+
+
+   
+
+
+g,vertices,v_prop,pairs, our_index = readGraph('test.txt')
+graph_draw(g, vertex_text=v_prop, output="test.png")
         
-# dist = g.new_vertex_property("int")
-# pred = g.new_vertex_property("int64_t")
-# bfs_search(g, vertices[89], Visitor(v_prop, pred, dist))
+dist = g.new_vertex_property("int")
+pred = g.new_vertex_property("int64_t")
+w = g.new_edge_property("int")
+w.set_value(1)
+for e in g.edges():
+    print(w[e])
+bfs_search(g, vertices[89], Visitor(v_prop, pred, dist))
 paths = []
 for pair in pairs:
     start,end = pair[0],pair[1]
@@ -99,3 +129,10 @@ for i in range(0,n-1):
             print('{} and {} are vertex disjoint'.format(paths[i],paths[j]))
         else:
             print('{} and {} are not vertex disjoint'.format(paths[i],paths[j]))
+        
+new_path = nextPath(g, 1, 4, [[1,4]], vertices, our_index, w)
+print(new_path)
+for e in g.edges():
+    print(w[e])
+
+# nextPath(g, 1, 4, [[1,4]], vertices, our_index, w)
