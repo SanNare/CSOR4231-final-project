@@ -4,13 +4,13 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 class Graph:
-    adj = defaultdict(lambda:[])
+    adj = defaultdict(lambda:set())
     w = defaultdict(lambda: float('inf'))
     def __init__(self, n = 0):
         self.n = n
 
     def add_edge(self, u,v):
-        self.adj[u].append(v)
+        self.adj[u].add(v)
 
     def set_weight(self, u, v, wt):
         self.w[frozenset({u,v})] = wt
@@ -20,7 +20,7 @@ class Graph:
 
     def construct(self, E):
         for e in E:
-            self.adj[e[0]].append(e[1])
+            self.adj[e[0]].add(e[1])
     
     def BFS(self, s):
         visited = defaultdict(lambda: False)
@@ -113,7 +113,54 @@ def nextPath(g, s, d, paths):
         curr = prev[curr]
         new_path.append(curr)
     new_path.reverse()
+    for p in paths:
+        n = len(p)
+        for i in range(n-1):
+            u,v = p[i],p[i+1]
+            g.set_weight(u,v,g.weight(u,v)-1)
     return new_path
+
+class Solution():
+    paths = defaultdict(lambda: None)
+
+    def __init__(self, paths = defaultdict(lambda:None)):
+        self.paths = paths
+
+    def assign_new_path(self, g, p, tried_paths):
+        new_path = nextPath(g, p[0], p[1], tried_paths)
+        self.paths[p] = new_path
+    
+    def lower_bound(self, g, pairs):
+        assigned_paths = list(self.paths.values())
+        assigned_pairs = set(self.paths.keys())
+        unassigned_pairs = set(pairs)-assigned_pairs
+        part1 = len(assigned_pairs) #first part of lower bound
+        rog = nx.DiGraph()
+        path_edges = set()
+        path_vertices = set()
+        for p in assigned_paths:
+            for i in range(len(p)-1):
+                path_edges.add((p[i],p[i+1]))
+                path_vertices.add(p[i])
+                path_vertices.add(p[i+1])
+        for u in range(g.n):
+            for v in g.adj[u]:
+                if u not in path_vertices and v not in path_vertices:
+                    rog.add_edge(u, v, capacity=1)
+        for p in unassigned_pairs:
+            u,v = p[0],p[1]
+            rog.add_edge('s',u,capacity = len(g.adj[u]-path_vertices))
+            deg = 0
+            for u in range(g.n):
+                if v in g.adj[u] and (u,v) not in path_edges:
+                    deg+=1
+            rog.add_edge(v,'t',capacity = deg)
+        cut_value, _ = nx.minimum_cut(rog, 's', 't') #second part of lower bound
+        # nx.draw(rog, with_labels = True, pos = nx.spring_layout(rog))
+        # plt.savefig('sample1.png')
+        return part1 + cut_value
+
+
     
 
 
@@ -158,6 +205,7 @@ def nextPath(g, s, d, paths):
 # R = erdos_renyi_graph(n, p)
 E = [(0,1),(0,4),(0,3),(1,2),(4,2),(3,2)]
 E = [(0,5),(0,3),(1,3),(2,4),(3,5),(3,4),(4,6),(5,6),(6,8),(6,9),(6,7),(7,10)]
+pairs = [(0,8),(1,9),(2,10)]
 g = Graph(11)
 g.construct(E)
 # g.set_weight(0,1,2)
@@ -177,5 +225,9 @@ g.construct(E)
 # print(prev)
 # new_path = nextPath(g, 0, 2, [[0,4,2]])
 # print(new_path)
-min_cut_size = g.min_cut([(0,8),(1,9),(2,10)])
-print(min_cut_size)
+# min_cut_size = g.min_cut([(0,8),(1,9),(2,10)])
+# print(min_cut_size)
+assigned = defaultdict(lambda: None)
+assigned[(0,8)] = [0,5,6,8]
+partial = Solution(assigned)
+print(partial.lower_bound(g,pairs))
