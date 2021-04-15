@@ -1,7 +1,10 @@
 from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Any
 import queue
 import networkx as nx
 import matplotlib.pyplot as plt
+import copy
 
 class Graph:
     adj = defaultdict(lambda:set())
@@ -36,6 +39,18 @@ class Graph:
                     q.put(v)
                     prev[v] = u
         return prev
+
+    def shortest_path(self, s, t):
+        prev = self.BFS(s)
+        path = []
+        curr = t
+        while curr != s:
+            path.append(curr)
+            curr = prev[curr]
+        path.append(s)
+        path.reverse()
+        return path
+
 
     def dijkstra(self, s):
         dist = defaultdict(lambda: float('inf'))
@@ -120,11 +135,26 @@ def nextPath(g, s, d, paths):
             g.set_weight(u,v,g.weight(u,v)-1)
     return new_path
 
-class Solution():
+def vertex_disjoint(p1,p2):
+    ans = False
+    s1,s2,t1,t2 = p1[0],p2[0],p1[-1],p2[-1]
+    set1 = set(p1)
+    set2 = set(p2)
+    common = set1.intersection(set2)
+    if s1 == s2 and t1 == t2:
+        if common == set(s1,t1):
+            ans = True
+    else:
+        if len(common) == 0:
+            ans = True
+    return ans
+
+class Solution:
+    priority = -float('inf')
     paths = defaultdict(lambda: None)
 
     def __init__(self, paths = defaultdict(lambda:None)):
-        self.paths = paths
+        self.paths = copy.deepcopy(paths)
 
     def assign_new_path(self, g, p, tried_paths):
         new_path = nextPath(g, p[0], p[1], tried_paths)
@@ -160,6 +190,105 @@ class Solution():
         # plt.savefig('sample1.png')
         return part1 + cut_value
 
+@dataclass(order=True)
+class PrioritizedItem:
+    priority: int
+    soln: Any=field(compare=False)
+
+    def __init__(self,soln, g, pairs):
+        self.priority = -soln.lower_bound(g, pairs)
+        self.soln = soln
+
+@dataclass(order=True)
+class Item:
+    priority: int
+    pair: Any=field(compare=False)
+
+    def __init__(self,p,deg_sum):
+        self.priority = deg_sum
+        self.pair = p
+
+def vertex_disjoint_paths(g, pairs): #branch and bound algorithm for finding vertex disjoint paths
+    #initialization of solution
+    shortest_paths = defaultdict(lambda: [])
+    # for p in pairs:
+        
+    paths = defaultdict(lambda: None)
+    max_so_far, best_so_far = 0, copy.deepcopy(paths)
+    S = queue.PriorityQueue()
+    it = PrioritizedItem(Solution(paths),g,pairs)
+    S.put(it)
+    while not S.empty():
+        it = S.get()
+        P = it.soln
+        unassigned_pairs = []
+        for p in pairs:
+            if P.paths[p] is None:
+                unassigned_pairs.append(p)
+        #we pick one of the pairs to assign a path to here, could be improved (for finding the solution quicker) using some heuristic
+        p = unassigned_pairs[0] #deterministically choosing the first unassigned pair
+        found_paths = []
+        
+        while True: #reconsider the following: old_path != new_path (time vs correctness)
+            new_path = nextPath(g,p[0],p[1],found_paths)
+            if new_path in found_paths:
+                break
+            found_paths.append(new_path)
+            is_vertex_disjoint = True
+            assigned_paths = P.paths.values()
+            for ap in assigned_paths:
+                if not vertex_disjoint(new_path,ap):
+                    is_vertex_disjoint = False
+                    break
+            if is_vertex_disjoint:
+                if len(assigned_paths)+1 > max_so_far:
+                    max_so_far = len(assigned_paths)+1
+                    best_so_far = copy.deepcopy(P.paths)
+                    best_so_far[p] = new_path
+
+def shortest_path(g, s ,t):
+    paths = nx.single_source_shortest_path(g, s)
+    return paths[t]
+                
+def initialize(g, pairs):
+    shortest_paths = defaultdict(lambda: [])
+    assignment = defaultdict(lambda: None)
+    degree_sum = defaultdict(lambda: float('inf')) #total degree for now, consider using only out degrees for performance
+    while True:
+        unassigned_pairs = [p for p in pairs if assignment[p] is None]
+        q = queue.PriorityQueue()
+        for p in unassigned_pairs:
+            paths = nx.single_source_shortest_path(g, p[0])
+            if p[1] not in paths.keys():
+                continue
+            else:
+                shortest_paths[p] = paths[p[1]] 
+            degree_sum[p] = 0 
+            for i in range(1,len(shortest_paths[p])-1):
+                degree_sum[p]+= g.degree[shortest_paths[p][i]]
+                q.put(Item(p,degree_sum[p]))
+
+        p = None
+        while not q.empty():
+            p = q.get().pair
+            is_vd = True
+            for assigned_path in assignment.values():
+                if assigned_path is not None:
+                    if not vertex_disjoint(shortest_paths[p],assigned_path):
+                        is_vd = False
+                        break
+            if is_vd:
+                break
+        if q.empty(): 
+            break
+        assignment[p] = shortest_paths[p]
+        # print(assignment)
+        g.remove_nodes_from(assignment[p])
+    return assignment
+
+
+
+            
 
     
 
@@ -203,11 +332,13 @@ class Solution():
 # n = 10
 # p = 0.5
 # R = erdos_renyi_graph(n, p)
-E = [(0,1),(0,4),(0,3),(1,2),(4,2),(3,2)]
-E = [(0,5),(0,3),(1,3),(2,4),(3,5),(3,4),(4,6),(5,6),(6,8),(6,9),(6,7),(7,10)]
+# E = [(0,1),(0,4),(0,3),(1,2),(4,2),(3,2)]
+E = [(0,5),(0,3),(1,3),(2,4),(3,5),(3,4),(4,6),(4,7),(5,6),(6,8),(6,9),(6,7),(7,10)]
 pairs = [(0,8),(1,9),(2,10)]
 g = Graph(11)
 g.construct(E)
+G = nx.Graph()
+G.add_edges_from(E)
 # g.set_weight(0,1,2)
 # g.set_weight(0,3,2)
 # g.set_weight(0,4,1)
@@ -231,3 +362,6 @@ assigned = defaultdict(lambda: None)
 assigned[(0,8)] = [0,5,6,8]
 partial = Solution(assigned)
 print(partial.lower_bound(g,pairs))
+print(shortest_path(G,0,10))
+
+print(initialize(G,pairs))
