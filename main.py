@@ -5,15 +5,23 @@ import queue
 import networkx as nx
 import matplotlib.pyplot as plt
 import copy
+import sys
 
 class Graph:
     adj = defaultdict(lambda:set())
+    vertices = set()
     w = defaultdict(lambda: float('inf'))
     n = 0
     def __init__(self, n = 0):
         self.n = n
 
     def add_edge(self, u,v):
+        if u not in self.vertices:
+            self.vertices.add(u)
+            self.n += 1
+        if v not in self.vertices:
+            self.vertices.add(v)
+            self.n += 1
         self.adj[u].add(v)
 
     def set_weight(self, u, v, wt):
@@ -24,7 +32,15 @@ class Graph:
 
     def construct(self, E):
         for e in E:
-            self.adj[e[0]].add(e[1])
+            # self.adj[e[0]].add(e[1])
+            self.add_edge(e[0],e[1])
+
+    def edges(self):
+        E = set()
+        for u in self.vertices:
+            for v in self.adj[u]:
+                E.add((u,v))
+        return E
     
     def BFS(self, s):
         visited = defaultdict(lambda: False)
@@ -63,7 +79,7 @@ class Graph:
             d,u = H.get()
             if d > dist[u]:
                 continue
-            for u in range(self.n):
+            for u in self.vertices:
                 for v in self.adj[u]:
                     if dist[v] > dist[u] + self.weight(u,v):
                         dist[v] = dist[u] + self.weight(u,v)
@@ -73,14 +89,14 @@ class Graph:
 
     def in_degree(self, v):
         deg = 0
-        for u in range(self.n):
+        for u in self.vertices:
             if v in self.adj[u]:
                 deg+=1
         return deg
     
     def min_cut(self, pairs):
         G = nx.DiGraph()
-        for u in range(self.n):
+        for u in self.vertices:
             for v in self.adj[u]:
                 G.add_edge(u, v, capacity=1)
         for p in pairs:
@@ -313,88 +329,25 @@ def initialize(g, pairs):
         if q.empty(): 
             break
         assignment[p] = shortest_paths[p]
-        # print(assignment)
         g.remove_nodes_from(assignment[p])
     return assignment
 
+def write_paths(assignment, output_file):
+    file = open(output_file, 'w')
+    for p in assignment.values():
+        if p is not None:
+            for v in p:
+                file.write('{} '.format(v))
+            file.write('\n')
+    file.close()
 
 
-            
-
-    
-
-
-# def getAllPathsUtil(g, u, d, visited, path, paths):
-  
-#         # Mark the current node as visited and store in path
-#         visited[u]= True
-#         path.append(u)
-  
-#         # If current vertex is same as destination, then print
-#         # current path[]
-#         if u == d:
-#             # print(path)
-#             paths.append(list(path))
-#         else:
-#             # If current vertex is not destination
-#             # Recur for all the vertices adjacent to this vertex
-#             for i in g.adj[u]:
-#                 if visited[i]== False:
-#                     getAllPathsUtil(g, i, d, visited, path, paths)
-                      
-#         # Remove current vertex from path[] and mark it as unvisited
-#         path.pop()
-#         visited[u]= False
-   
-   
-#     # Prints all paths from 's' to 'd'
-# def getAllPaths(g, s, d):
-  
-#     # Mark all the vertices as not visited
-#     visited =[False]*(g.n)
-  
-#     # Create an array to store paths
-#     path = []
-#     paths = []
-#     # Call the recursive helper function to print all paths
-#     getAllPathsUtil(g, s, d, visited, path, paths)
-#     return paths
-
-# n = 10
-# p = 0.5
-# R = erdos_renyi_graph(n, p)
-# E = [(0,1),(0,4),(0,3),(1,2),(4,2),(3,2)]
-E = [(0,5),(0,3),(1,3),(2,4),(3,5),(3,4),(4,6),(4,7),(5,6),(6,8),(6,9),(6,7),(7,10)]
-pairs = [(0,8),(1,9),(2,10)]
-g = Graph(11)
-g.construct(E)
+input_file, output_file = sys.argv[1], sys.argv[2]
+g, pairs = readGraph(input_file)
+E = g.edges()
 G = nx.Graph()
 G.add_edges_from(E)
-# g.set_weight(0,1,2)
-# g.set_weight(0,3,2)
-# g.set_weight(0,4,1)
-# g.set_weight(1,2,2)
-# g.set_weight(3,2,2)
-# g.set_weight(4,2,1)
-# paths = getAllPaths(g, 0, 1)
-# print(paths)
-# pos = nx.spring_layout(R)
-# nx.draw(R, pos, with_labels = True)
-# plt.savefig("Graph.png", format="PNG")
-# prev = g.BFS(0)
-# print(prev)
-# prev = g.dijkstra(0)
-# print(prev)
-# new_path = nextPath(g, 0, 2, [[0,4,2]])
-# print(new_path)
-# min_cut_size = g.min_cut([(0,8),(1,9),(2,10)])
-# print(min_cut_size)
-# assigned = defaultdict(lambda: None)
-# assigned[(0,8)] = [0,5,6,8]
-# partial = Solution(assigned)
-# print(partial.upper_bound(g,pairs))
-# print(shortest_path(G,0,10))
-
-print(initialize(G,pairs))
-
-print(vertex_disjoint_paths(g,pairs))
+assignment = initialize(G,pairs)
+print(assignment)
+write_paths(assignment, output_file)
+# print(vertex_disjoint_paths(g,pairs))

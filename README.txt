@@ -1,5 +1,17 @@
-Instructions to Run our code:
+Instructions to Run our code: (main.py) [We used Python 3.7.6 in a conda environment]
 
+1. Install Python library 'networkx' as follows:
+
+pip install networkx
+
+We also use the following Python libraries, so if they are not installed (will be notified when trying to execute), use pip to install them:
+collections, dataclasses, typing, queue, copy, sys
+
+2. Execute the code (assuming input file exists in same directory as main.py) in the following way:
+
+python main.py <input_file_name> <output_file_name>
+
+Example: python main.py input.txt output.txt
 
 
 Columbia Honor Code: 
