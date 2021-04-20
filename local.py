@@ -123,15 +123,18 @@ def readGraph(input_file):
         if lines[i] == 'PAIRS\n':
             next = i+1
             break
-        l = lines[i].split(':')
-        u = int(l[0])
-        v = map(int,l[1][1:].split())
-        for y in v:
-            g.add_edge(u,y)
+        if len(lines[i]) > 1:
+            l = lines[i].split(':')
+            u = int(l[0])
+            if len(l[1][1:]) != 0:
+                v = map(int,l[1][1:].split())
+                for y in v:
+                    g.add_edge(u,y)
     pairs = []
     for i in range(next,len(lines)):
-        p = tuple(map(int,lines[i].split()))
-        pairs.append(p)
+        if len(lines[i]) > 1:
+            p = tuple(map(int,lines[i].split()))
+            pairs.append(p)
     return g,pairs
 
 def nextPath(g, s, d, paths):
@@ -303,7 +306,16 @@ def initialize(g, pairs):
     assignment = defaultdict(lambda: None)
     degree_sum = defaultdict(lambda: float('inf')) #total degree for now, consider using only out degrees for performance
     while True:
-        unassigned_pairs = [p for p in pairs if assignment[p] is None]
+        unassigned_pairs = set([p for p in pairs if assignment[p] is None])
+        up = frozenset(unassigned_pairs)
+        for p in up:
+            # print(p)
+            u,v = p[0],p[1]
+            for path in assignment.values():
+                if path is not None:
+                    if u in path or v in path:
+                        unassigned_pairs-={(u,v)}
+
         q = queue.PriorityQueue()
         for p in unassigned_pairs:
             paths = nx.single_source_shortest_path(g, p[0])
@@ -382,16 +394,26 @@ def improve(assignment, g, pairs):
 
 
 # input_file, output_file = sys.argv[1], sys.argv[2]
-input_file = 'samplein.txt'
+input_file = 'tricky_examples_final/3.txt'
 g, pairs = readGraph(input_file)
+print(pairs)
 E = g.edges()
-G = nx.Graph()
+G = nx.DiGraph()
 G.add_edges_from(E)
 assignment = initialize(G,pairs)
+# p = pairs[0]
+# assignment = defaultdict(lambda:None)
+# assignment[p] = g.shortest_path(p[0],p[1])
+# for t in pairs:
+#     if t != p:
+#         assignment[t] = None
+# assignment[(91,92)] = g.shortest_path(91,92)
+print('After initialization:')
 print(assignment)
 # write_paths(assignment, output_file)
 # print(vertex_disjoint_paths(g,pairs))
-for i in range(20):
+print('After local search:')
+for i in range(10):
     improve(assignment, g, pairs)
 print(assignment)
 
