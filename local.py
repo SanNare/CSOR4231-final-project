@@ -417,6 +417,9 @@ for i in range(10):
     improve(assignment, g, pairs)
 print(assignment)
 
+output_file = input_file.split('.')[0]+'_out.txt'
+write_paths(assignment,output_file)
+
 # paths = []
 # next = None 
 # prev = 0
