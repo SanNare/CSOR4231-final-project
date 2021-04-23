@@ -1,4 +1,4 @@
-Instructions to Run our code: (main.py) [We used Python 3.7.6 in a conda environment]
+Instructions to Run our code: (local.py) [We used Python 3.7.6 in a conda environment]
 
 1. Install Python library 'networkx' as follows:
 
@@ -11,7 +11,12 @@ collections, dataclasses, typing, queue, copy, sys
 
 python main.py <input_file_name> <output_file_name>
 
-Example: python main.py input.txt output.txt
+Example: python local.py input.txt output.txt
+
+
+Changes made:
+
+Paradigm shift from branch and bound to local search (basic version without heuristics), which tries to improve the intial solution computed making use of minimum degree sum shortest path heuristic.
 
 
 Columbia Honor Code: 
